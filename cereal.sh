@@ -15,7 +15,7 @@ while IFS= read -r -d '' device; do
     initial_devices+=("$device")
 done < <(find /dev -name "tty*" -print0 2>/dev/null | sort -z)
 
-# Display count of initial devices (but not the actual device names)
+# Display initial device count
 echo "Found ${#initial_devices[@]} serial devices"
 
 # Prompt user to plug in new devices
@@ -55,7 +55,7 @@ fi
 echo ""
 echo "Detected ${#new_devices[@]} new serial device(s):"
 
-# Show only the basename of new devices (not full paths) - this is what we want per requirements
+# Show basename of new devices
 for device in "${new_devices[@]}"; do
     basename "$device"
 done
@@ -85,12 +85,16 @@ else
     echo ""
     echo "Which device(s) would you like to open?"
     echo "Options:"
-    echo "1) All devices"
-    echo "2) Specific device"
+    echo "0) Open all new devices"
+    
+    # Show options for each available device
+    for i in "${!new_devices[@]}"; do
+        echo "$((i+1))) ${new_devices[$i]}"
+    done
 
-    read -p "Enter your choice (1 or 2): " choice
+    read -p "Enter your choice (0 or 1-$(( ${#new_devices[@]} ))): " choice
 
-    if [ "$choice" = "1" ]; then
+    if [ "$choice" = "0" ]; then
         # Open all new devices
         echo ""
         echo "Opening all new devices..."
@@ -112,40 +116,29 @@ else
                 screen "$device" 115200 &
             fi
         done
-    elif [ "$choice" = "2" ]; then
-        # Allow user to select specific device(s)
-        echo ""
-        echo "Available devices:"
-        for i in "${!new_devices[@]}"; do
-            echo "$((i+1))) ${new_devices[$i]}"
-        done
-        
-        read -p "Enter device numbers separated by spaces (e.g., 1 3): " selected_indices
-        
-        # Validate and open selected devices
-        for index in $selected_indices; do
-            if [ "$index" -ge 1 ] && [ "$index" -le "${#new_devices[@]}" ]; then
-                device="${new_devices[$((index-1))]}"
-                echo ""
-                echo "Opening $device at 115200 baud..."
-                if command -v osascript &> /dev/null; then
-                    # For macOS - create new terminal window with screen session
-                    osascript -e "tell application \"Terminal\" to do script \"screen $device 115200\"" &
-                elif command -v gnome-terminal &> /dev/null; then
-                    # For Linux - GNOME
-                    gnome-terminal -- bash -c "screen $device 115200; exec bash" &
-                elif command -v xterm &> /dev/null; then
-                    # For Linux - XTerm
-                    xterm -e "screen $device 115200" &
-                else
-                    # Fallback - just run screen in background (may not work properly)
-                    echo "WARNING: No suitable terminal emulator found. Running screen directly."
-                    screen "$device" 115200 &
-                fi
+    elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#new_devices[@]}" ]; then
+        # Validate and open selected device
+        if [ "$choice" -ge 1 ] && [ "$choice" -le "${#new_devices[@]}" ]; then
+            device="${new_devices[$((choice-1))]}"
+            echo ""
+            echo "Opening $device at 115200 baud..."
+            if command -v osascript &> /dev/null; then
+                # For macOS - create new terminal window with screen session
+                osascript -e "tell application \"Terminal\" to do script \"screen $device 115200\"" &
+            elif command -v gnome-terminal &> /dev/null; then
+                # For Linux - GNOME
+                gnome-terminal -- bash -c "screen $device 115200; exec bash" &
+            elif command -v xterm &> /dev/null; then
+                # For Linux - XTerm
+                xterm -e "screen $device 115200" &
             else
-                echo "Invalid device number: $index"
+                # Fallback - just run screen in background (may not work properly)
+                echo "WARNING: No suitable terminal emulator found. Running screen directly."
+                screen "$device" 115200 &
             fi
-        done
+        else
+            echo "Invalid device number: $choice"
+        fi
     else
         echo "Invalid choice. Exiting."
         exit 1

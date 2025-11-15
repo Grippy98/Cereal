@@ -1,5 +1,7 @@
 # Cereal Script
 
+![Cereal Demo](assets/CerealEdited.gif)
+
 A script to manage serial device terminals by automatically detecting connected devices and spawning screen sessions at 115200 baud.
 
 ## Features

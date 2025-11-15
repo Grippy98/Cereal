@@ -1,13 +1,20 @@
 #!/bin/bash
 
+
 # Cereal - Serial device terminal manager
 # This script detects serial devices and spawns screen sessions at 115200 baud
 
 set -euo pipefail
-
+echo ""
 echo "Cereal - Serial device manager"
+echo""
+echo "     o8Oo./"
+echo " ._o8o8o8Oo_."
+echo "  \========/"
+echo "   \------/ "
 echo "=============================="
 echo ""
+
 
 # Get initial list of serial devices
 initial_devices=()
@@ -20,8 +27,7 @@ echo "Found ${#initial_devices[@]} serial devices"
 
 # Prompt user to plug in new devices
 echo ""
-echo "Please plug in your serial devices now..."
-echo "Press Enter when you're done plugging in devices"
+echo "Please plug in your serial devices now... (then press Enter)"
 read -r
 
 # Get list of devices after user intervention

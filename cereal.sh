@@ -55,7 +55,50 @@ done
 if [ ${#new_devices[@]} -eq 0 ]; then
     echo ""
     echo "No new serial devices detected."
-    exit 1
+
+    # Look for existing USB serial devices
+    existing_usb_devices=()
+    while IFS= read -r -d '' device; do
+        existing_usb_devices+=("$device")
+    done < <(find /dev -name "tty.usbserial-*" -print0 2>/dev/null | sort -z)
+
+    if [ ${#existing_usb_devices[@]} -gt 0 ]; then
+        echo ""
+        echo "However, found ${#existing_usb_devices[@]} existing USB serial device(s)."
+
+        # If only one device, use it automatically
+        if [ ${#existing_usb_devices[@]} -eq 1 ]; then
+            echo ""
+            echo "Connecting to: ${existing_usb_devices[0]}"
+            new_devices=("${existing_usb_devices[@]}")
+        else
+            # Let user choose which device(s)
+            echo ""
+            echo "Which device(s) would you like to open?"
+            echo "Options:"
+            echo "0) Open all devices"
+
+            for i in "${!existing_usb_devices[@]}"; do
+                echo "$((i+1))) ${existing_usb_devices[$i]}"
+            done
+
+            read -p "Enter your choice (0 or 1-${#existing_usb_devices[@]}, or q to quit): " choice
+
+            if [ "$choice" = "0" ]; then
+                new_devices=("${existing_usb_devices[@]}")
+            elif [[ "$choice" =~ ^[Qq]$ ]]; then
+                echo "Exiting."
+                exit 0
+            elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#existing_usb_devices[@]}" ]; then
+                new_devices=("${existing_usb_devices[$((choice-1))]}")
+            else
+                echo "Invalid choice. Exiting."
+                exit 1
+            fi
+        fi
+    else
+        exit 1
+    fi
 fi
 
 echo ""
@@ -74,6 +117,13 @@ if [ ${#new_devices[@]} -eq 1 ]; then
     # Open in a new terminal window/tab - for macOS
     if command -v osascript &> /dev/null; then
         # For macOS - create new terminal window with screen session
+        # First check permissions
+        if [ ! -r "$device" ] || [ ! -w "$device" ]; then
+            echo "ERROR: No read/write permission for $device"
+            echo "Run: sudo chmod 666 $device"
+            echo "Or run this script with: sudo $0"
+            exit 1
+        fi
         osascript -e "tell application \"Terminal\" to do script \"screen $device 115200\"" &
     elif command -v gnome-terminal &> /dev/null; then
         # For Linux - GNOME
